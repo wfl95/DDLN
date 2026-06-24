@@ -8,11 +8,6 @@ Label noise is a major challenge in large-scale supervised face recognition, whe
 
 ![DDLN Framework](pipeline.jpg)
 
-Please place the framework figure of the paper at:
-
-```text
-figures/DDLN_framework.png
-```
 
 ## Usage Rules
 
@@ -71,25 +66,7 @@ logits, labels = head(
 )
 ```
 
-### 4. Usage with ArcFace
-
-```python
-from noise_filter_DDLN import build_head
-
-head = build_head(
-    head_type="arcface_denoise",
-    m=0.5,
-    s=64.0
-)
-
-logits, labels = head(
-    cosine,
-    label,
-    current_epoch
-)
-```
-
-### 5. Parameter setting
+### 4. Parameter setting
 
 ```text
 milestone0: first learning rate decay epoch
@@ -106,8 +83,8 @@ Filtering is disabled at epoch 0 to stabilize early training.
 The datasets used in our experiments are available through Baidu Netdisk.
 
 ```text
-Baidu Netdisk: 填写百度网盘链接
-Extraction code: 填写提取码
+Baidu Netdisk: https://pan.baidu.com/s/1OjSuDxIxlOIFFj6j6axHEQ?pwd=ni3v
+Extraction code: ni3v
 ```
 
 The datasets are provided for academic research only.
