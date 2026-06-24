@@ -6,8 +6,9 @@ Label noise is a major challenge in large-scale supervised face recognition, whe
 
 ## Framework
 
-![DDLN Framework](pipeline.jpg)
-
+<p align="center">
+  <img src="pipeline.jpg" alt="DDLN Framework" width="700">
+</p>
 
 ## Usage Rules
 
