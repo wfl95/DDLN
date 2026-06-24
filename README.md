@@ -1,130 +1,40 @@
-# DDLN-Noise-Robust Face Recognition via Non-target Similarity Distribution Guided Sample Selection
+# Noise-Robust Face Recognition via Non-target Similarity Guided Sample Selection
 
-A lightweight PyTorch implementation of a plug-and-play noise filtering module for noise-robust face recognition training.
+## Abstract
 
-This repository provides the core implementation of **DDLN NoiseFilter**, which performs sample filtering directly in cosine-similarity space and can be integrated into common margin-based face recognition losses such as **CosFace** and **ArcFace** with minimal code changes.
+Label noise is a major challenge in large-scale supervised face recognition, where weak or automatic annotations often introduce errors that mislead training. To address this, we propose a noise robust framework that performs noise detection and sample selection directly in cosine-similarity space. We observe that the non-target cosine similarities of clean samples share a highly consistent distribution profile with the target similarities of unfitted mislabeled samples. This phenomenon can be explained from a backpropagation perspective and provides a cue for monitoring label noise during training. Based on this observation, we formulate noise detection as boundary estimation in similarity space. Specifically, we track the upper bound of high-confidence clean non-target similarities to determine the filtering threshold, without requiring prior knowledge of the noise rate or auxiliary networks. We further introduce a progressive rule during early training, where the threshold gradually increases from the estimated noise lower bound to the upper bound. This process discards unreliable pairs while retaining hard but clean samples. Extensive experiments on eight synthetic and three real-world noisy datasets demonstrate that our method achieves superior noise detection and state-of-the-art recognition accuracy, with only about 0.2\% additional measured overhead in the ResNet50-CosFace setting. The filtered dataset produced by our method is also beneficial for subsequent training. Source code will be made publicly available.
 
-> Note: This repository currently provides the core noise filtering module and example margin heads. It is not a complete face recognition training framework.
+## Framework
 
----
+![DDLN Framework](figures/DDLN_framework.png)
 
-## Overview
-
-Label noise is a common problem in large-scale supervised face recognition datasets. When face images are collected or annotated automatically, incorrect identity labels may be introduced and can mislead model training.
-
-This repository provides a simple and lightweight noise filtering module. The module estimates noise-related similarity statistics during training and progressively filters unreliable samples according to a dynamically updated threshold.
-
-The core idea is to perform noise detection in the cosine-similarity space. During training, the module tracks the lower and upper bounds of noise-related similarity statistics with exponential moving average (EMA), then constructs a progressive filtering threshold from early to later epochs.
-
----
-
-## Main Features
-
-- PyTorch implementation
-- Plug-and-play design
-- Compatible with CosFace and ArcFace
-- Noise filtering in cosine-similarity space
-- Progressive threshold update during training
-- EMA-based threshold smoothing
-- Minimal modification to existing face recognition training code
-
----
-
-## Repository Structure
+Please place the framework figure of the paper at:
 
 ```text
-DDLN-NoiseRobustFaceRecognition/
-├── README.md
-├── noise_filter_DDLN.py
-├── requirements.txt
-└── .gitignore
+figures/DDLN_framework.png
 ```
 
-The main file is:
+## Usage Rules
 
-```text
-noise_filter_DDLN.py
+The proposed noise filtering module is designed for margin-based face recognition training, such as CosFace and ArcFace.
+
+### 1. Input format
+
+The module receives cosine similarities and identity labels:
+
+```python
+cosine: Tensor of shape [B, C]
+label: Tensor of shape [B]
+current_epoch: int
 ```
 
-It contains:
+where `B` is the batch size and `C` is the number of identities/classes.
 
-- `NoiseFilter`: the core noise filtering module
-- `CosFace`: CosFace margin head with optional denoising
-- `ArcFace`: ArcFace margin head with optional denoising
-- `build_head`: helper function for constructing CosFace or ArcFace heads
-
----
-
-## Requirements
-
-The code is implemented with PyTorch.
-
-```text
-torch>=1.10
-```
-
-You can install the dependency with:
-
-```bash
-pip install -r requirements.txt
-```
-
-If you do not use `requirements.txt`, install PyTorch manually according to your CUDA environment.
-
----
-
-## Quick Start
-
-### 1. Import the module
+### 2. Basic usage
 
 ```python
 from noise_filter_DDLN import NoiseFilter
-```
 
-### 2. Create the noise filter
-
-```python
-noise_filter = NoiseFilter(
-    log=None,
-    milestone0=11,
-    gap_epoch=2,
-    top_class=10,
-    ema_t=0.01,
-    alpha=0.02
-)
-```
-
-### 3. Apply noise filtering before loss computation
-
-```python
-cosine_new, label_new = noise_filter(
-    cosine,
-    label,
-    current_epoch
-)
-```
-
-Then use the filtered cosine similarities and labels to compute the margin-based classification loss.
-
----
-
-## Example Usage
-
-The following example shows how to use `NoiseFilter` independently.
-
-```python
-import torch
-from noise_filter_DDLN import NoiseFilter
-
-# Batch size and number of identities/classes
-B = 8
-C = 1000
-
-# Simulated cosine similarity matrix and labels
-cosine = torch.randn(B, C)
-label = torch.randint(0, C, (B,))
-
-# Create the noise filter
 noise_filter = NoiseFilter(
     log=None,
     milestone0=11,
@@ -134,24 +44,16 @@ noise_filter = NoiseFilter(
     alpha=0.02
 )
 
-current_epoch = 1
-
-# Filter unreliable samples
 cosine_new, label_new = noise_filter(
     cosine,
     label,
     current_epoch
 )
-
-print("Before filtering:", cosine.shape, label.shape)
-print("After filtering:", cosine_new.shape, label_new.shape)
 ```
 
----
+The filtered `cosine_new` and `label_new` are then used to compute the margin-based classification loss.
 
-## Usage with CosFace
-
-The repository provides a CosFace head with optional noise filtering.
+### 3. Usage with CosFace
 
 ```python
 from noise_filter_DDLN import build_head
@@ -169,21 +71,7 @@ logits, labels = head(
 )
 ```
 
-If you do not want to enable denoising, use:
-
-```python
-head = build_head(
-    head_type="cosface",
-    m=0.35,
-    s=64.0
-)
-```
-
----
-
-## Usage with ArcFace
-
-The repository also provides an ArcFace head with optional noise filtering.
+### 4. Usage with ArcFace
 
 ```python
 from noise_filter_DDLN import build_head
@@ -201,264 +89,25 @@ logits, labels = head(
 )
 ```
 
-If you do not want to enable denoising, use:
+### 5. Parameter setting
 
-```python
-head = build_head(
-    head_type="arcface",
-    m=0.5,
-    s=64.0
-)
+```text
+milestone0: first learning rate decay epoch
+gap_epoch: number of epochs reserved before milestone0 for progressive threshold updating
+top_class: number of high non-target similarities used for boundary estimation
+ema_t: EMA coefficient for threshold smoothing
+alpha: slack term for upper-bound estimation
 ```
 
----
-
-## Important Parameters
-
-### `milestone0`
-
-The epoch of the first learning rate decay or the epoch before which the progressive filtering schedule is expected to become stable.
-
-Example:
-
-```python
-milestone0=11
-```
-
-### `gap_epoch`
-
-Controls the progressive threshold schedule. The threshold gradually moves from the estimated lower bound to the upper bound before `milestone0`.
-
-Example:
-
-```python
-gap_epoch=2
-```
-
-### `top_class`
-
-The number of high non-target cosine similarities used to estimate the upper noise-related similarity bound.
-
-Example:
-
-```python
-top_class=10
-```
-
-### `ema_t`
-
-EMA update coefficient for smoothing the estimated statistics.
-
-Example:
-
-```python
-ema_t=0.01
-```
-
-### `alpha`
-
-A small slack term added when estimating the upper bound.
-
-Example:
-
-```python
-alpha=0.02
-```
-
----
-
-## How It Works
-
-At each training step, the module receives:
-
-```python
-cosine: Tensor of shape [B, C]
-label:  Tensor of shape [B]
-```
-
-where:
-
-- `B` is the batch size
-- `C` is the number of identities/classes
-- `cosine` is the cosine similarity between image features and class centers
-- `label` is the ground-truth identity label
-
-The module then:
-
-1. Extracts the target-class cosine similarity of each sample.
-2. Tracks noise-related similarity statistics with EMA.
-3. Estimates a progressive threshold.
-4. Filters samples whose target-class cosine similarity is below the current threshold.
-5. Returns the filtered cosine similarities and labels.
-
-Filtering is disabled at epoch 0 to avoid unstable early training.
-
----
+Filtering is disabled at epoch 0 to stabilize early training.
 
 ## Dataset
 
-The dataset used in our experiments is hosted on Baidu Netdisk.
+The datasets used in our experiments are available through Baidu Netdisk.
 
 ```text
-Baidu Netdisk: 填写你的百度网盘链接
-Extraction code: 填写你的提取码
+Baidu Netdisk: 填写百度网盘链接
+Extraction code: 填写提取码
 ```
 
-Please replace the placeholders above with the actual download link and extraction code.
-
----
-
-## Dataset Usage Notice
-
-The dataset is provided only for academic research purposes.
-
-Users should follow all applicable laws, institutional requirements, and privacy regulations when using the dataset.
-
-The following uses are not allowed:
-
-- Commercial use without permission
-- Redistribution without permission
-- Any use that violates privacy or legal regulations
-- Any use unrelated to academic research
-
----
-
-## Recommended Dataset Structure
-
-After downloading and extracting the dataset, the recommended structure is:
-
-```text
-dataset/
-├── train/
-│   ├── id_000001/
-│   ├── id_000002/
-│   ├── id_000003/
-│   └── ...
-├── val/
-│   ├── id_000001/
-│   ├── id_000002/
-│   ├── id_000003/
-│   └── ...
-└── README.txt
-```
-
-If your dataset follows a different structure, please modify the data loading script accordingly.
-
----
-
-## Integration into Existing Training Code
-
-In a typical face recognition training pipeline, the model first extracts normalized face features. Then the classification layer computes cosine similarities between features and class centers.
-
-The noise filter should be applied after cosine similarity computation and before the final margin-based loss computation.
-
-A simplified training flow is:
-
-```python
-# 1. Extract face features
-features = backbone(images)
-
-# 2. Compute cosine similarities
-cosine = classifier(features)
-
-# 3. Apply noise filtering
-cosine, labels = noise_filter(
-    cosine,
-    labels,
-    current_epoch
-)
-
-# 4. Compute margin-based logits
-logits, labels = margin_head(
-    cosine,
-    labels,
-    current_epoch
-)
-
-# 5. Compute loss
-loss = criterion(logits, labels)
-```
-
-If you use the provided `CosFace` or `ArcFace` classes with `denoiseEnable=True`, the filtering step is already included inside the head.
-
----
-
-## Minimal Example with Training Loss
-
-```python
-import torch
-import torch.nn as nn
-from noise_filter_DDLN import build_head
-
-B = 16
-C = 1000
-
-cosine = torch.randn(B, C)
-label = torch.randint(0, C, (B,))
-
-criterion = nn.CrossEntropyLoss()
-
-head = build_head(
-    head_type="cosface_denoise",
-    m=0.35,
-    s=64.0
-)
-
-current_epoch = 1
-
-logits, label_new = head(
-    cosine,
-    label,
-    current_epoch
-)
-
-loss = criterion(logits, label_new)
-
-print(loss.item())
-```
-
----
-
-## Notes
-
-- The module is designed for supervised face recognition training with noisy labels.
-- The input `cosine` should represent cosine similarities between samples and class centers.
-- The label tensor should contain integer class labels.
-- Filtering is disabled at epoch 0 to keep early training stable.
-- `milestone0` should usually be aligned with the first learning rate decay epoch.
-- The method does not require prior knowledge of the noise rate.
-- The method does not require an auxiliary network.
-
----
-
-## Citation
-
-If this repository is useful for your research, please cite our paper after it becomes available.
-
-```bibtex
-@article{your_paper_key,
-  title   = {Your Paper Title},
-  author  = {Your Name and Others},
-  journal = {To appear},
-  year    = {2026}
-}
-```
-
----
-
-## License
-
-This repository is currently released for academic research use.
-
-Please contact the authors if you would like to use the code or dataset for other purposes.
-
----
-
-## Contact
-
-For questions about the code or dataset, please contact:
-
-```text
-Name: Your Name
-Email: your_email@example.com
-```
+The datasets are provided for academic research only.
