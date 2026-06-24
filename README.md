@@ -81,11 +81,7 @@ Filtering is disabled at epoch 0 to stabilize early training.
 
 ## Dataset
 
-The datasets used in our experiments are available through Baidu Netdisk.
+Dataset resources are available at [Baidu Netdisk](https://pan.baidu.com/s/1OjSuDxIxlOIFFj6j6axHEQ?pwd=ni3v), with extraction code `ni3v`.
 
-```text
-Baidu Netdisk: https://pan.baidu.com/s/1OjSuDxIxlOIFFj6j6axHEQ?pwd=ni3v
-Extraction code: ni3v
-```
+The package includes simulated noisy dataset lists based on CASIA-Clean and the real-world noisy dataset WebFace2M-Noise. These resources are provided for academic research only.
 
-The datasets are provided for academic research only.
