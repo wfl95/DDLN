@@ -1,4 +1,4 @@
-# Noise-Robust Face Recognition via Non-target Similarity Guided Sample Selection
+# DDLN: Detecting and Discarding Label Noise for Noise-Robust Face Recognition
 
 ## Abstract
 
